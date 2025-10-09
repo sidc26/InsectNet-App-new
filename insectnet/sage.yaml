@@ -1,6 +1,6 @@
 name: insectnet
 version: 0.1.0
-description: "Deep learning-powered insect classification at the edge using InsectNet."
+description: "Insect classification plug-in (InsectNet, regnet)"
 keywords: "insect, pest, classification, ecology"
 authors:
   - Siddharth Chalasani
@@ -33,7 +33,8 @@ requirements:
   - pywaggle[vision]==0.56.0
   - torch==2.2.0
   - torchvision==0.17.0
-  - pandas==2.2.2
+  - torchaudio==2.2.0
+  - pandas==2.3.3
   - numpy<2
   - Pillow
-  - opencv-python==4.9.0.80
+  - opencv-python==4.11.0.86
