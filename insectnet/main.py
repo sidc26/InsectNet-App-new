@@ -19,9 +19,11 @@ CLASSES_PATH = "classes.csv"
 
 def build_model():
     import argparse
-    from torch.serialization import add_safe_globals
-    add_safe_globals([argparse.Namespace])
+    import torch
 
+# Compatibility shim for PyTorch < 2.6 (e.g., Waggle base images)
+    if hasattr(torch.serialization, "add_safe_globals"):
+        torch.serialization.add_safe_globals([argparse.Namespace])
     model = torchvision.models.regnet_y_32gf(weights=None)
     model.fc = torch.nn.Linear(3712, 2526)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -79,49 +81,96 @@ def preprocess_image(image_np):
 # ============================================================
 # 3. Inference + Publishing
 # ============================================================
+#with static image
+from PIL import Image
+import numpy as np
+from waggle.plugin import Plugin
+import torch
 
 def main():
     model, device = build_model()
     scientific_names, roles = load_classes()
 
-    with Plugin() as plugin, Camera() as camera:
-        print("📸 InsectNet edge inference started — waiting for camera frames...")
+    # 🔹 Use static image for local testing
+    TEST_IMAGE_PATH = "image.png"  # place this in the same folder as main.py
 
-        for snapshot in camera.stream():
-            try:
-                # Preprocess
-                image_tensor = preprocess_image(snapshot.data)
-                image_tensor = image_tensor.to(device, non_blocking=True)
+    print(f"🧪 Running InsectNet static test on {TEST_IMAGE_PATH}...")
 
-                # Inference
-                with torch.inference_mode():
-                    output = model(image_tensor)
-                    op = torch.nn.functional.softmax(output, dim=1)
-                    op_ix = torch.argmax(op)
-                    confidence = op[0][op_ix].item()
-                    pred_index = op_ix.item()
+    # Load static image
+    image_np = np.array(Image.open(TEST_IMAGE_PATH).convert("RGB"))
+    image_tensor = preprocess_image(image_np).to(device, non_blocking=True)
 
-                # Interpret result
-                sci_name = scientific_names[pred_index]
-                role = roles[pred_index]
-                status = "OOD (low confidence)" if confidence < 0.97 else "ID"
+    # Run inference
+    with torch.inference_mode():
+        output = model(image_tensor)
+        op = torch.nn.functional.softmax(output, dim=1)
+        op_ix = torch.argmax(op)
+        confidence = op[0][op_ix].item()
+        pred_index = op_ix.item()
 
-                # Print for debugging
-                print(f"🪲 {sci_name:40s} | {role:25s} | conf={confidence:.3f} | {status}")
+    # Interpret result
+    sci_name = scientific_names[pred_index]
+    role = roles[pred_index]
+    status = "OOD (low confidence)" if confidence < 0.97 else "ID"
 
-                # Publish to Beehive
-                plugin.publish("insectnet.prediction", sci_name, timestamp=snapshot.timestamp)
-                plugin.publish("insectnet.confidence", confidence, timestamp=snapshot.timestamp)
-                plugin.publish("insectnet.role", role, timestamp=snapshot.timestamp)
-                plugin.publish("insectnet.status", status, timestamp=snapshot.timestamp)
+    print(f"✅ Prediction: {sci_name} ({role}) | conf={confidence:.3f} | {status}")
 
-                # Save and upload snapshot
-                snapshot_filename = "snapshot.jpg"
-                snapshot.save(snapshot_filename)
-                plugin.upload_file(snapshot_filename, timestamp=snapshot.timestamp)
+    # Publish results locally to test-run log
+    with Plugin() as plugin:
+        plugin.publish("insectnet.prediction", sci_name)
+        plugin.publish("insectnet.confidence", confidence)
+        plugin.publish("insectnet.role", role)
 
-            except Exception as e:
-                print(f"[⚠️ ERROR] Frame processing failed: {e}")
+        # Save the test image (to confirm upload path works)
+        Image.fromarray(image_np).save("snapshot.jpg")
+        plugin.upload_file("snapshot.jpg")
+
+    print("🧾 Results written to test-run/data.ndjson")
+
+
+#with camera inference
+# def main():
+#     model, device = build_model()
+#     scientific_names, roles = load_classes()
+
+#     with Plugin() as plugin, Camera() as camera:
+#         print("📸 InsectNet edge inference started — waiting for camera frames...")
+
+#         for snapshot in camera.stream():
+#             try:
+#                 # Preprocess
+#                 image_tensor = preprocess_image(snapshot.data)
+#                 image_tensor = image_tensor.to(device, non_blocking=True)
+
+#                 # Inference
+#                 with torch.inference_mode():
+#                     output = model(image_tensor)
+#                     op = torch.nn.functional.softmax(output, dim=1)
+#                     op_ix = torch.argmax(op)
+#                     confidence = op[0][op_ix].item()
+#                     pred_index = op_ix.item()
+
+#                 # Interpret result
+#                 sci_name = scientific_names[pred_index]
+#                 role = roles[pred_index]
+#                 status = "OOD (low confidence)" if confidence < 0.97 else "ID"
+
+#                 # Print for debugging
+#                 print(f"🪲 {sci_name:40s} | {role:25s} | conf={confidence:.3f} | {status}")
+
+#                 # Publish to Beehive
+#                 plugin.publish("insectnet.prediction", sci_name, timestamp=snapshot.timestamp)
+#                 plugin.publish("insectnet.confidence", confidence, timestamp=snapshot.timestamp)
+#                 plugin.publish("insectnet.role", role, timestamp=snapshot.timestamp)
+#                 plugin.publish("insectnet.status", status, timestamp=snapshot.timestamp)
+
+#                 # Save and upload snapshot
+#                 snapshot_filename = "snapshot.jpg"
+#                 snapshot.save(snapshot_filename)
+#                 plugin.upload_file(snapshot_filename, timestamp=snapshot.timestamp)
+
+#             except Exception as e:
+#                 print(f"[⚠️ ERROR] Frame processing failed: {e}")
 
 
 if __name__ == "__main__":
