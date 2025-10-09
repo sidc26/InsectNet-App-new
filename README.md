@@ -9,5 +9,5 @@ Real-time insect classification at the edge using InsectNet.
 
 ## Author
 **Siddharth Chalasani**  
-Argonne National Laboratory – Sage Grande Project
-NAISE
+NAISE - Argonne National Laboratory – Sage Grande Project
+
