@@ -91,7 +91,7 @@ def main():
     model, device = build_model()
     scientific_names, roles = load_classes()
 
-    # 🔹 Use static image for local testing
+    #  Use static image for local testing
     TEST_IMAGE_PATH = "image.png"  # place this in the same folder as main.py
 
     print(f"🧪 Running InsectNet static test on {TEST_IMAGE_PATH}...")
@@ -100,28 +100,32 @@ def main():
     image_np = np.array(Image.open(TEST_IMAGE_PATH).convert("RGB"))
     image_tensor = preprocess_image(image_np).to(device, non_blocking=True)
 
-    # Run inference
-    with torch.inference_mode():
-        output = model(image_tensor)
-        op = torch.nn.functional.softmax(output, dim=1)
-        op_ix = torch.argmax(op)
-        confidence = op[0][op_ix].item()
-        pred_index = op_ix.item()
-
-    # Interpret result
-    sci_name = scientific_names[pred_index]
-    role = roles[pred_index]
-    status = "OOD (low confidence)" if confidence < 0.97 else "ID"
-
-    print(f"✅ Prediction: {sci_name} ({role}) | conf={confidence:.3f} | {status}")
-
-    # Publish results locally to test-run log
+    # ============================================================
+    # 🕒 Measure Inference Time
+    # ============================================================
     with Plugin() as plugin:
+        with plugin.timeit("insectnet.inference_ns"):
+            with torch.inference_mode():
+                output = model(image_tensor)
+                op = torch.nn.functional.softmax(output, dim=1)
+                op_ix = torch.argmax(op)
+                confidence = op[0][op_ix].item()
+                pred_index = op_ix.item()
+
+        # Interpret result
+        sci_name = scientific_names[pred_index]
+        role = roles[pred_index]
+        status = "OOD (low confidence)" if confidence < 0.97 else "ID"
+
+        print(f"✅ Prediction: {sci_name} ({role}) | conf={confidence:.3f} | {status}")
+
+        # Publish results
         plugin.publish("insectnet.prediction", sci_name)
         plugin.publish("insectnet.confidence", confidence)
         plugin.publish("insectnet.role", role)
+        plugin.publish("insectnet.status", status)
 
-        # Save the test image (to confirm upload path works)
+        # Save the test image (optional)
         Image.fromarray(image_np).save("snapshot.jpg")
         plugin.upload_file("snapshot.jpg")
 
