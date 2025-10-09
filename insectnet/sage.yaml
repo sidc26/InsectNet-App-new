@@ -1,0 +1,39 @@
+name: insectnet
+version: 0.1.0
+description: "Deep learning-powered insect classification at the edge using InsectNet."
+keywords: "insect, pest, classification, ecology"
+authors:
+  - Siddharth Chalasani
+collaborators: ""
+funding: ""
+license: 
+homepage: "https://github.com/sidc26/insectnet"
+
+# Supported platforms (Orin = arm64, x86 dev nodes = amd64)
+source:
+  architectures:
+    - linux/amd64
+    - linux/arm64
+
+# Type of app
+kind: vision
+
+# Input sources and published outputs
+inputs:
+  - camera
+
+outputs:
+  - insectnet.prediction
+  - insectnet.confidence
+  - insectnet.role
+  - upload
+
+# Runtime package requirements (for Sage scheduler reference)
+requirements:
+  - pywaggle[vision]==0.56.0
+  - torch==2.2.0
+  - torchvision==0.17.0
+  - pandas==2.2.2
+  - numpy<2
+  - Pillow
+  - opencv-python==4.9.0.80
