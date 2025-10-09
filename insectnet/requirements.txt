@@ -1,9 +1,7 @@
 # for additional pywaggle install options, see: https://github.com/waggle-sensor/pywaggle#installation-guides
 pywaggle[vision]==0.56.0
 
-pywaggle[vision]==0.56.0
-
 # Only small libraries not preinstalled
-pandas==2.2.2
-ipykernel==6.29.0
+pandas==1.1.5
+ipykernel==6.0.3
 

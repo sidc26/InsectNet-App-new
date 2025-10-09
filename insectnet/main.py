@@ -8,15 +8,15 @@ import numpy as np
 from waggle.plugin import Plugin
 from waggle.data.vision import Camera
 
+
 # ============================================================
 # 1. Model and Metadata Setup
 # ============================================================
 
-# File paths relative to your app folder
 WEIGHTS_PATH = "weights/model.pth"
 CLASSES_PATH = "classes.csv"
 
-# Build RegNetY model structure (same as test_inference.py)
+
 def build_model():
     import argparse
     from torch.serialization import add_safe_globals
@@ -45,8 +45,6 @@ def build_model():
     return model, device
 
 
-
-# Load label info
 def load_classes():
     df = pd.read_csv(CLASSES_PATH)
     names = list(df["genus"] + " " + df["species"])
@@ -59,7 +57,6 @@ def load_classes():
 # ============================================================
 
 def preprocess_image(image_np):
-    # Match evaluate.py preprocessing exactly
     crop_size = 224
     resize_size = 256
     mean = (0.485, 0.456, 0.406)
@@ -71,16 +68,16 @@ def preprocess_image(image_np):
         transforms.CenterCrop(crop_size),
         transforms.PILToTensor(),
         transforms.ConvertImageDtype(torch.float),
-        transforms.Normalize(mean=mean, std=std)
+        transforms.Normalize(mean=mean, std=std),
     ])
 
     image = Image.fromarray(np.uint8(image_np))
-    tensor = transforms_val(image).reshape((1, 3, 224, 224))
+    tensor = transforms_val(image).reshape((1, 3, 224, 224))  # keep reshape
     return tensor
 
 
 # ============================================================
-# 3. Inference Loop
+# 3. Inference + Publishing
 # ============================================================
 
 def main():
@@ -88,7 +85,7 @@ def main():
     scientific_names, roles = load_classes()
 
     with Plugin() as plugin, Camera() as camera:
-        print("📸 InsectNet edge inference started. Waiting for camera frames...")
+        print("📸 InsectNet edge inference started — waiting for camera frames...")
 
         for snapshot in camera.stream():
             try:
@@ -109,17 +106,19 @@ def main():
                 role = roles[pred_index]
                 status = "OOD (low confidence)" if confidence < 0.97 else "ID"
 
-                # Print to console for debugging
-                print(f"Prediction: {sci_name} ({role}) | conf={confidence:.3f} | {status}")
+                # Print for debugging
+                print(f"🪲 {sci_name:40s} | {role:25s} | conf={confidence:.3f} | {status}")
 
                 # Publish to Beehive
                 plugin.publish("insectnet.prediction", sci_name, timestamp=snapshot.timestamp)
                 plugin.publish("insectnet.confidence", confidence, timestamp=snapshot.timestamp)
                 plugin.publish("insectnet.role", role, timestamp=snapshot.timestamp)
+                plugin.publish("insectnet.status", status, timestamp=snapshot.timestamp)
 
-                # Save snapshot for record
-                snapshot.save("snapshot.jpg")
-                plugin.upload_file("snapshot.jpg", timestamp=snapshot.timestamp)
+                # Save and upload snapshot
+                snapshot_filename = "snapshot.jpg"
+                snapshot.save(snapshot_filename)
+                plugin.upload_file(snapshot_filename, timestamp=snapshot.timestamp)
 
             except Exception as e:
                 print(f"[⚠️ ERROR] Frame processing failed: {e}")
