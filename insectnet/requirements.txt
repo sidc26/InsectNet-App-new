@@ -1,13 +1,9 @@
 # for additional pywaggle install options, see: https://github.com/waggle-sensor/pywaggle#installation-guides
 pywaggle[vision]==0.56.0
 
-# Torch + Vision for model inference
-torch==2.2.0
-torchvision==0.17.0
+pywaggle[vision]==0.56.0
 
-# Scientific stack
-numpy<2
+# Only small libraries not preinstalled
 pandas==2.2.2
-Pillow
-opencv-python==4.9.0.80
+ipykernel==6.29.0
 
