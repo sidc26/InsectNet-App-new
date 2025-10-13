@@ -47,11 +47,11 @@ RUN echo "Installing Jetson-compatible PyTorch stack..." && \
         torchaudio==2.3.0
 
 # =========================================================
-# 🚀 Final runtime image
+# 🚀 Final runtime image (default = GPU)
 # =========================================================
-# Selects either CPU or GPU image depending on build target
-FROM ${TARGET:-arm64} AS final
-COPY . /app
+FROM arm64 AS final
 WORKDIR /app
+COPY . /app
 RUN mkdir -p weights test-run
+
 ENTRYPOINT ["python3", "main.py"]
