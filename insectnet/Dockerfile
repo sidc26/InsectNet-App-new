@@ -39,12 +39,12 @@ RUN echo "Installing CPU PyTorch stack..." && \
 # ⚙️ GPU build stage (for Jetson Orin)
 # =========================================================
 FROM base AS arm64
-RUN echo "Installing ARM64 (CUDA 12.1 PyTorch stack for Orin)..." && \
+RUN echo "Installing Jetson-compatible PyTorch stack..." && \
     pip install --no-cache-dir \
-        torch==2.2.0+cu121 \
-        torchvision==0.17.0+cu121 \
-        torchaudio==2.2.0+cu121 \
-        --index-url https://download.pytorch.org/whl/cu121
+      --extra-index-url https://pypi.ngc.nvidia.com \
+      torch==2.3.0 \
+      torchvision==0.18.0 \
+      torchaudio==2.3.0
 
 # =========================================================
 # 🚀 Final runtime image (selects stage at build time)
