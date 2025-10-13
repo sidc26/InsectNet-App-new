@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir \
     pywaggle[vision]==0.56.0
 
 # =========================================================
-# 🧩 CPU build stage (for local testing on laptop)
+# 🧩 CPU build stage (for local testing)
 # =========================================================
 FROM base AS cpu
 RUN echo "Installing CPU PyTorch stack..." && \
@@ -41,15 +41,17 @@ RUN echo "Installing CPU PyTorch stack..." && \
 FROM base AS arm64
 RUN echo "Installing Jetson-compatible PyTorch stack..." && \
     pip install --no-cache-dir \
-      --extra-index-url https://pypi.ngc.nvidia.com \
-      torch==2.3.0 \
-      torchvision==0.18.0 \
-      torchaudio==2.3.0
+        --extra-index-url https://pypi.ngc.nvidia.com \
+        torch==2.3.0 \
+        torchvision==0.18.0 \
+        torchaudio==2.3.0
 
 # =========================================================
-# 🚀 Final runtime image (selects stage at build time)
+# 🚀 Final runtime image
 # =========================================================
-FROM arm64 AS final
-COPY . .
+# Selects either CPU or GPU image depending on build target
+FROM ${TARGET:-arm64} AS final
+COPY . /app
+WORKDIR /app
 RUN mkdir -p weights test-run
 ENTRYPOINT ["python3", "main.py"]
